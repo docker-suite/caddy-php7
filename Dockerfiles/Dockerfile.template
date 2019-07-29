@@ -1,0 +1,64 @@
+FROM dsuite/caddy as caddy
+
+FROM dsuite/alpine-php7:{{PHP_VERSION}}
+
+LABEL maintainer="Hexosse <hexosse@gmail.com>" \
+      description="Minimal Alpine image with Caddy server, php7 and runit process supervisor." \
+      vendor="docker-suite" \
+      license="MIT"
+
+## Current php version
+ENV PHP_VERSION={{PHP_VERSION}}
+
+## When using Composer, disable the warning about running commands as root/super user
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
+##
+ARG PLUGINS
+ARG LICENSE
+ARG TELEMETRY
+
+## Define plugins, license an temetry to install
+## or update caddy
+ENV PLUGINS=${PLUGINS}
+ENV LICENSE=${LICENSE:-"personal"}
+ENV TELEMETRY=${TELEMETRY:-"on"}
+
+## Create users
+RUN \
+	# Print executed commands
+	set -x \
+    # Ensure www-data user exists
+    # 82 is the standard uid/gid for "www-data" in Alpine
+    && sh -c 'addgroup -g 82 -S www-data 2>/dev/null || exit 0'  \
+    && sh -c 'adduser -u 82 -S -D -s /sbin/nologin -G www-data -g www-data www-data 2>/dev/null || exit 0'  \
+    # Add caddy user
+    && sh -c 'addgroup -g 102 -S caddy 2>/dev/null || exit 0'  \
+    && sh -c 'adduser -u 101 -S -D -s /sbin/nologin -G caddy -g caddy caddy 2>/dev/null || exit 0'  \
+    # caddy user must be member of www-data
+    && sh -c 'adduser caddy www-data 2>/dev/null || exit 0'
+
+## Install packages
+RUN \
+	# Print executed commands
+	set -x \
+    # Update repository indexes
+    && apk-update \
+	# Clear apk's cache
+	&& apk-cleanup
+
+## Caddy files
+COPY --from=caddy /etc/entrypoint.d /etc/entrypoint.d
+COPY --from=caddy /etc/service.d /etc/service.d
+COPY --from=caddy /usr/local/bin/caddy-install.sh /usr/local/bin/caddy-install.sh
+COPY rootfs /
+
+## Install latest version of caddy
+RUN chmod +x /usr/local/bin/caddy-install.sh \
+    && bash -c '/usr/local/bin/caddy-install.sh'
+
+## Add volume to allow persistence
+VOLUME ["/etc/caddy", "/etc/caddy/certificates", "/var/www", "/var/log"]
+
+## Expose http, https and caddy port
+EXPOSE 80 443 2015 9000

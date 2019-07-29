@@ -1,0 +1,71 @@
+
+file:
+  /etc/service.d/caddy:
+    exists: true
+    filetype: directory
+  /etc/service.d/caddy/enable:
+    exists: true
+    filetype: file
+  /etc/service.d/caddy/finish:
+    exists: true
+    filetype: file
+  /etc/service.d/caddy/run:
+    exists: true
+    mode: "0777"
+    filetype: file
+  /usr/bin/caddy:
+    exists: true
+    mode: "0755"
+    filetype: file
+
+command:
+  php-version:
+    exit-status: 0
+    exec: "php -version"
+    stdout:
+    {{if getEnv "PHP_VERSION" | eq "7.1"}}
+    - "PHP 7.1"
+    {{else if getEnv "PHP_VERSION" | eq "7.2"}}
+    - "PHP 7.2"
+    {{else if getEnv "PHP_VERSION" | eq "7.3"}}
+    - "PHP 7.3"
+    {{else if getEnv "PHP_VERSION" | eq "7.4"}}
+    - "PHP 7.4"
+    {{else}}
+    - ""
+    {{end}}
+  composer-version:
+    exit-status: 0
+    exec: "composer --version"
+    stdout:
+    - "Composer version"
+  caddy-version:
+    exit-status: 0
+    exec: "caddy --version"
+
+group:
+  www-data:
+    exists: true
+    gid: 82
+    skip: false
+  caddy:
+    exists: true
+    gid: 102
+    skip: false
+
+user:
+  www-data:
+    exists: true
+    uid: 82
+    gid: 82
+    groups:
+    - www-data
+    skip: false
+  caddy:
+    exists: true
+    uid: 101
+    gid: 102
+    groups:
+    - caddy
+    - www-data
+    skip: false
